@@ -45,6 +45,45 @@ const CONTATO = {
   })();
 
   /* ---------------------------------------------------------
+     tela de carregamento
+     --------------------------------------------------------- */
+  let cortinaAberta = !document.querySelector('[data-preloader]');
+
+  function quandoPronto(fn) {
+    if (cortinaAberta) { fn(); return; }
+    document.addEventListener('nier:pronto', fn, { once: true });
+  }
+
+  function preloader() {
+    const el = $('[data-preloader]');
+    if (!el) return;
+
+    if (reduced) { el.remove(); cortinaAberta = true; return; }
+
+    document.documentElement.classList.add('is-loading');
+    const inicio = Date.now();
+    let saiu = false;
+
+    const sair = () => {
+      if (saiu) return;
+      saiu = true;
+      document.documentElement.classList.remove('is-loading');
+      el.classList.add('done');
+      cortinaAberta = true;
+      document.dispatchEvent(new Event('nier:pronto'));
+      setTimeout(() => el.remove(), 700);
+    };
+
+    // fica no minimo 750ms para nao piscar, e sai assim que a pagina carrega
+    const agendar = () => setTimeout(sair, Math.max(0, 750 - (Date.now() - inicio)));
+    if (document.readyState === 'complete') agendar();
+    else addEventListener('load', agendar, { once: true });
+
+    // teto, caso algum recurso externo trave
+    setTimeout(sair, 2600);
+  }
+
+  /* ---------------------------------------------------------
      contato
      --------------------------------------------------------- */
   function contato() {
@@ -169,7 +208,7 @@ const CONTATO = {
       });
     }, { threshold: 0.2, rootMargin: '0px 0px -6% 0px' });
 
-    titulos.forEach(el => obs.observe(el));
+    quandoPronto(() => titulos.forEach(el => obs.observe(el)));
   }
 
   /* ---------------------------------------------------------
@@ -200,7 +239,7 @@ const CONTATO = {
       });
     }, { threshold: 0.14, rootMargin: '0px 0px -7% 0px' });
 
-    alvos.forEach(el => obs.observe(el));
+    quandoPronto(() => alvos.forEach(el => obs.observe(el)));
   }
 
   /* ---------------------------------------------------------
@@ -342,6 +381,7 @@ const CONTATO = {
   }
 
   function iniciar() {
+    preloader();
     contato();
     navegacao();
     secaoAtiva();
