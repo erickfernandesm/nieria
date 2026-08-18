@@ -178,12 +178,23 @@ const CONTATO = {
     const barra = $('[data-progress]');
     const wa = $('.wa-float');
 
+    /* medir a altura do documento a cada quadro obriga o navegador a
+       recalcular o layout inteiro, entao ela fica em cache */
+    let alcance = 0;
+    const medir = () => { alcance = document.documentElement.scrollHeight - innerHeight; };
+    medir();
+    addEventListener('resize', medir, { passive: true });
+    setTimeout(medir, 1200);
+
+    let mostrando = null;
     scrollBus.add(y => {
       if (barra && !supportsScrollTimeline) {
-        const alcance = document.documentElement.scrollHeight - innerHeight;
         barra.style.width = (alcance > 0 ? (y / alcance) * 100 : 0) + '%';
       }
-      if (wa) wa.classList.toggle('show', y > innerHeight * 0.65);
+      if (wa) {
+        const deve = y > innerHeight * 0.65;
+        if (deve !== mostrando) { wa.classList.toggle('show', deve); mostrando = deve; }
+      }
     });
   }
 
@@ -286,6 +297,20 @@ const CONTATO = {
   }
 
   /* ---------------------------------------------------------
+     pausa animacoes continuas fora da tela
+     --------------------------------------------------------- */
+  function pausarForaDaTela() {
+    if (!('IntersectionObserver' in window)) return;
+
+    const obs = new IntersectionObserver(entradas => {
+      entradas.forEach(e => e.target.classList.toggle('pausado', !e.isIntersecting));
+    }, { rootMargin: '10% 0px' });
+
+    $$('.marquee__track').forEach(el => obs.observe(el));
+    $$('.hero__scan').forEach(el => obs.observe(el));
+  }
+
+  /* ---------------------------------------------------------
      conversa animada
      --------------------------------------------------------- */
   function conversa() {
@@ -340,10 +365,16 @@ const CONTATO = {
     const preenche = $('[data-tl-fill]');
     if (!lista || !preenche || reduced) return;
 
+    let naTela = false;
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(e => { naTela = e[0].isIntersecting; },
+        { rootMargin: '20% 0px' }).observe(lista);
+    } else { naTela = true; }
+
     scrollBus.add(() => {
+      if (!naTela) return;
       const r = lista.getBoundingClientRect();
-      const alvo = innerHeight * 0.62;
-      const pct = (alvo - r.top) / r.height;
+      const pct = (innerHeight * 0.62 - r.top) / r.height;
       preenche.style.height = Math.max(0, Math.min(1, pct)) * 100 + '%';
     });
   }
@@ -399,6 +430,7 @@ const CONTATO = {
       revelar();
       acordeao();
       marquee();
+      pausarForaDaTela();
       conversa();
       linhaDoTempo();
       parallax();
