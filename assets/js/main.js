@@ -48,17 +48,25 @@ const CONTATO = {
      tela de carregamento
      --------------------------------------------------------- */
   let cortinaAberta = !document.querySelector('[data-preloader]');
+  const aoAbrirCortina = [];
 
+  /* fila em vez de evento: se a cortina ja subiu, roda na hora;
+     se ainda nao, entra na fila. Nao ha corrida de registro. */
   function quandoPronto(fn) {
-    if (cortinaAberta) { fn(); return; }
-    document.addEventListener('nier:pronto', fn, { once: true });
+    cortinaAberta ? fn() : aoAbrirCortina.push(fn);
+  }
+
+  function abrirCortina() {
+    if (cortinaAberta) return;
+    cortinaAberta = true;
+    while (aoAbrirCortina.length) aoAbrirCortina.shift()();
   }
 
   function preloader() {
     const el = $('[data-preloader]');
     if (!el) return;
 
-    if (reduced) { el.remove(); cortinaAberta = true; return; }
+    if (reduced) { el.remove(); abrirCortina(); return; }
 
     document.documentElement.classList.add('is-loading');
     const inicio = Date.now();
@@ -69,8 +77,7 @@ const CONTATO = {
       saiu = true;
       document.documentElement.classList.remove('is-loading');
       el.classList.add('done');
-      cortinaAberta = true;
-      document.dispatchEvent(new Event('nier:pronto'));
+      abrirCortina();
       setTimeout(() => el.remove(), 700);
     };
 
@@ -381,20 +388,30 @@ const CONTATO = {
   }
 
   function iniciar() {
-    preloader();
-    contato();
-    navegacao();
-    secaoAtiva();
-    progressoEFlutuante();
-    linhas();
-    revelar();
-    acordeao();
-    marquee();
-    conversa();
-    linhaDoTempo();
-    parallax();
-    logo();
-    ano();
+    try {
+      preloader();
+      setTimeout(abrirCortina, 3000);
+      contato();
+      navegacao();
+      secaoAtiva();
+      progressoEFlutuante();
+      linhas();
+      revelar();
+      acordeao();
+      marquee();
+      conversa();
+      linhaDoTempo();
+      parallax();
+      logo();
+      ano();
+    } catch (erro) {
+      /* rede de seguranca: sem a classe js as regras que escondem o conteudo
+         param de valer, entao a pagina aparece inteira, so que sem animacao */
+      document.documentElement.classList.remove('js');
+      document.documentElement.classList.remove('is-loading');
+      const cortina = $('[data-preloader]');
+      if (cortina) cortina.remove();
+    }
   }
 
   document.readyState === 'loading'
